@@ -214,15 +214,16 @@ pub fn encode_jpeg(width: u32, height: u32, premultiplied: &[u8], quality: u8, d
     Ok(out)
 }
 
-/// Premultiplied RGBA → TIFF (RGB, uncompressed) at `dpi`. Written with `tiff` directly:
-/// `image`'s `TiffEncoder` always says 1 × 1 with no unit.
+/// Premultiplied RGBA → TIFF (RGB, LZW-compressed) at `dpi`. Written with `tiff` directly:
+/// `image`'s `TiffEncoder` always says 1 × 1 with no unit and leaves the strips uncompressed.
+/// No predictor: LZW alone is the compression TIFF readers support most widely after none.
 pub fn encode_tiff(width: u32, height: u32, premultiplied: &[u8], dpi: f64) -> Result<Vec<u8>, String> {
-    use tiff::encoder::{Rational, TiffEncoder, colortype::RGB8};
+    use tiff::encoder::{Compression, Rational, TiffEncoder, colortype::RGB8};
     use tiff::tags::{ResolutionUnit, Tag};
     let err = |e: tiff::TiffError| e.to_string();
     let rgb = over_white(premultiplied);
     let mut out = std::io::Cursor::new(Vec::new());
-    let mut tiff = TiffEncoder::new(&mut out).map_err(err)?;
+    let mut tiff = TiffEncoder::new(&mut out).map_err(err)?.with_compression(Compression::Lzw);
     let mut image = tiff.new_image::<RGB8>(width, height).map_err(err)?;
     // In hundredths: a page drawn at a lowered resolution (`Exporter::dpi_used`) is rarely a whole number.
     let resolution = Rational { n: (dpi * 100.0).round() as u32, d: 100 };

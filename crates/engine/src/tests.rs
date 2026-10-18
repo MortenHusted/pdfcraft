@@ -2574,6 +2574,10 @@ fn pages_export_as_png_jpeg_and_tiff() {
     let tif = ex.image(0, 144.0, ImageFormat::Tiff).unwrap();
     let decoded = image::load_from_memory_with_format(&tif, image::ImageFormat::Tiff).unwrap();
     assert_eq!((decoded.width(), decoded.height()), (400, 600));
+    let mut tags = tiff::decoder::Decoder::new(std::io::Cursor::new(&tif)).unwrap();
+    let compression = tags.get_tag_u32(tiff::tags::Tag::Compression).unwrap();
+    let predictor = tags.get_tag_u32(tiff::tags::Tag::Predictor).unwrap();
+    assert_eq!((compression, predictor), (5, 1), "LZW, without a predictor");
 }
 
 /// A TIFF's resolution unit (2 = inch) and its horizontal and vertical resolution.
